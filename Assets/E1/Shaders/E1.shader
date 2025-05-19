@@ -72,7 +72,7 @@ Shader "Unlit/E1"
             float4 GetTextureSample(float2 uv)
             {
                 float2 offset = float2(0.0, _Time.y * _Texture_Speed);
-                uv = uv * uv + offset;
+                uv += offset;
                 float4 tex = tex2D(_Texture, uv);
                 tex -= 1;
                 return tex;

@@ -8,6 +8,9 @@ Shader "Unlit/E2"
         _Albedo("Albedo", 2D) = "White" {}
         _NormalMap("NormalMap", 2D) = "White" {}
         _Mask("Mask", 2D) = "White" {}
+        [Toggle(EMISSION_ON)] _UseEmission("Use Emission", Float) = 0
+        _EmissionMap("Emission Map", 2D) = "black" {}
+        _EmissionColor("Emission Color", Color) = (0,0,0,0)
     }
     SubShader
     {
@@ -19,7 +22,7 @@ Shader "Unlit/E2"
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #pragma multi_compile_fog
+            #pragma shader_feature_local _ EMISSION_ON
 
             #include "UnityCG.cginc"
 
@@ -47,6 +50,9 @@ Shader "Unlit/E2"
             sampler2D _Albedo;
             sampler2D _NormalMap;   
             sampler2D _Mask;   
+
+            sampler2D _EmissionMap;
+            float4 _EmissionColor;
 
             fragment vert (appdata v)
             {
@@ -117,8 +123,11 @@ Shader "Unlit/E2"
 
                 float3 lightDir = normalize(float3(0.3, 0.7, 0.5));
                 float NdotL = saturate(dot(normalSample, lightDir));
-                albedoSample.rgb *= NdotL;
-
+                albedoSample.rgb *= (0.2 + 0.8 * NdotL);
+                #ifdef EMISSION_ON
+                    float4 emissionSample = triplanarSample(_EmissionMap, i.worldPos, normal);
+                    albedoSample.rgb += emissionSample.rgb * _EmissionColor.rgb* maskSample;
+                #endif
                 return albedoSample;
             }
             ENDCG
