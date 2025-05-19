@@ -8,8 +8,8 @@ Shader "Custom/E3"
         _Flowmap("Flowmap", 2D) = "white" {}
 
         _NormalStrength("Normal Strength", Range(0, 2)) = 1
-        _FlowmapStrength("Flowmap Strength", Range(0, 1)) = 0.5
-        _Speed("Speed", Range(0, 5)) = 1
+        _FlowmapStrength("Flowmap Strength", float) = 0.5
+        _Speed("Speed", float) = 1
 
         _DepthRange("Depth Range", Float) = 10
         _DepthColor("Depth Color", Color) = (0, 1, 1, 1)
@@ -51,19 +51,20 @@ Shader "Custom/E3"
             float3 worldPos;
         };
 
+
+
         void surf(Input IN, inout SurfaceOutputStandard o)
         {
-            float2 flowOffset = float2(0.0, 0.4) * _Time.y * _Speed;
-            float2 flowUV = IN.uv_Flowmap + flowOffset;
+            float2 flowUV = IN.uv_Flowmap;
             float4 flowSample = tex2D(_Flowmap, flowUV);
-            float2 flowDir = flowSample.rg;
-            flowDir = (flowDir - 0.5) * 2.0;
-            flowDir *= _FlowmapStrength;
-            float flowStrength = length(flowDir);
-            flowDir *= flowStrength;
+
+            float2 baseFlow = (flowSample.rg - 0.5) * 2.0;
+            float strength = saturate(length(baseFlow));
+            float2 flowDir = baseFlow * lerp(0.1, _FlowmapStrength, strength);
+
             flowDir *= float2(0.5, -1.0);
 
-            float timer = _Time.y * 0.5 * _Speed;
+            float timer = _Time.y * 0.5;
             float firstFraction = frac(timer);
             float secondFraction = frac(timer + 0.5);
 
@@ -73,7 +74,7 @@ Shader "Custom/E3"
             float firstRemapMultiplication = firstRemap * flowDir;
             float secondRemapMultiplication = secondRemap * flowDir;
 
-            float2 offset = float2(0.0, 0.2) * _Time.y;
+            float2 offset = float2(0.0, 0.1) * _Time.y * _Speed;
             float2 uv = IN.uv_Texture * float2(1.0, 1.0) + offset;
             float2 uvNormals = IN.uv_Normals * float2(1.0, 1.0) + offset;
 
@@ -105,7 +106,7 @@ Shader "Custom/E3"
 
             o.Albedo = finalColor;
             o.Normal = blendedNormal;
-            o.Alpha = lerp(0.0, 1.0, depthDiff);
+            o.Alpha = 1;
         }
         ENDCG
     }
