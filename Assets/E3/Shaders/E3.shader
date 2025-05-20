@@ -60,59 +60,99 @@ Shader "Custom/E3"
             o.screenPos = ComputeScreenPos(UnityObjectToClipPos(v.vertex));
         }
 
-
-        void surf(Input IN, inout SurfaceOutputStandard o)
+        float2 GetFlowDirection(Input IN, out float strength)
         {
             float4 flowSample = tex2D(_Flowmap, IN.uv_Flowmap);
 
             float2 baseFlow = (flowSample.rg - 0.5) * 2.0;
-            float strength = saturate(length(baseFlow));
+            strength = saturate(length(baseFlow));
             float2 flowDir = baseFlow * lerp(0, _FlowmapStrength, strength);
 
-            flowDir *= float2(0.5, -1.0);
+            return flowDir *= float2(0.5, -1.0);
+        }
 
+        void Remap(float2 flowDir, out float firstFraction, out float firstRemapMultiplication, out float secondRemapMultiplication)
+        {
             float timer = _Time.y * 0.5;
-            float firstFraction = frac(timer);
+            firstFraction = frac(timer);
             float secondFraction = frac(timer + 0.5);
 
             float firstRemap = 0.4 + firstFraction * 0.6;
             float secondRemap = 0.4 + secondFraction * 0.6;
 
-            float firstRemapMultiplication = firstRemap * flowDir;
-            float secondRemapMultiplication = secondRemap * flowDir;
+            firstRemapMultiplication = firstRemap * flowDir;
+            secondRemapMultiplication = secondRemap * flowDir;
+        }
 
+        float2 GetUVBase(Input IN, float strength)
+        {
             float2 staticUV = IN.uv_Texture;
             float2 animatedUV = staticUV + float2(0.0, 0.1) * _Time.y * _Speed;
             float2 uvBase = lerp(staticUV, animatedUV, saturate(strength * 100));
-                
-            float2 uv = IN.uv_Texture * float2(1.0, 1.0) + uvBase;
-            float2 uvNormals = IN.uv_Normals * float2(1.0, 1.0) + uvBase;
 
+            return uvBase;
+        }
+
+        float4 GetSurfColor(Input IN, float strength, float firstRemapMultiplication, float secondRemapMultiplication, float t)
+        {
+            float2 uvBase = GetUVBase(IN, strength);
+            float2 uv = IN.uv_Texture * float2(1.0, 1.0) + uvBase;
             float2 firstRemapMultiplicationUV = firstRemapMultiplication + uv;
             float2 secondRemapMultiplicationUV = secondRemapMultiplication + uv;
-            float2 firstRemapMultiplicationNormalsUV = firstRemapMultiplication + uvNormals;
-            float2 secondRemapMultiplicationNormalsUV = secondRemapMultiplication + uvNormals;
 
             float4 surfaceCol1 = tex2D(_Texture, firstRemapMultiplicationUV);
             float4 surfaceCol2 = tex2D(_Texture, secondRemapMultiplicationUV);
 
+            float4 surfaceCol = lerp(surfaceCol1, surfaceCol2, t);
+            return surfaceCol;
+        }
+
+        float3 GetBlendedNormal(Input IN, float strength, float firstRemapMultiplication, float secondRemapMultiplication, float t)
+        {
+            float2 uvBase = GetUVBase(IN, strength);
+
+            float2 uvNormals = IN.uv_Normals * float2(1.0, 1.0) + uvBase;
+            
+            float2 firstRemapMultiplicationNormalsUV = firstRemapMultiplication + uvNormals;
+            float2 secondRemapMultiplicationNormalsUV = secondRemapMultiplication + uvNormals;
+
             float3 normal1 = UnpackNormal(tex2D(_Normals, firstRemapMultiplicationNormalsUV));
             float3 normal2 = UnpackNormal(tex2D(_Normals, secondRemapMultiplicationNormalsUV));
-
-            float divided = (0.5 - firstFraction) / 0.5;
-            float t = abs(divided);
+            
             float3 blendedNormal = normalize(lerp(normal1, normal2, t));
+            return blendedNormal;
+        }
 
-            float4 surfaceCol = lerp(surfaceCol1, surfaceCol2, t);
-
+        float GetDepthColor(Input IN)
+        {
             float2 uvDepth = IN.screenPos.xy /  IN.screenPos.w;
             float sceneDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, uvDepth));
             float surfaceDepth = UNITY_Z_0_FAR_FROM_CLIPSPACE( IN.screenPos.z);
             float depthColor =  saturate((sceneDepth - surfaceDepth) / _DepthRange);
 
+            return depthColor;
+        }
+
+        void surf(Input IN, inout SurfaceOutputStandard o)
+        {
+            float strength;
+
+            float firstRemapMultiplication;
+            float secondRemapMultiplication;
+            float firstFraction;
+
+            float2 flowDir = GetFlowDirection(IN, strength);
+            Remap(flowDir, firstFraction, firstRemapMultiplication, secondRemapMultiplication);
+
+            float divided = (0.5 - firstFraction) / 0.5;
+            float t = abs(divided);
+
+            float4 surfColor = GetSurfColor(IN, strength, firstRemapMultiplication, secondRemapMultiplication, t);
+            float3 blendedNormal = GetBlendedNormal(IN, strength, firstRemapMultiplication, secondRemapMultiplication, t);
+
             o.Albedo = _DepthColor.rgb;
             o.Normal = blendedNormal;
-            o.Alpha = depthColor;
+            o.Alpha = GetDepthColor(IN);
         }
         ENDCG
     }
