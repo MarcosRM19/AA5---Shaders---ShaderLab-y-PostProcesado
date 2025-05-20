@@ -25,8 +25,10 @@ Shader "Custom/E3"
 
 
         CGPROGRAM
-        #pragma surface surf Standard alpha:fade
+        #pragma surface surf Standard alpha:fade vertex:vert
         #pragma target 3.0
+        #include "UnityCG.cginc"
+
 
         sampler2D _Texture;
         sampler2D _Normals;
@@ -51,6 +53,12 @@ Shader "Custom/E3"
             float3 worldPos;
         };
 
+        void vert(inout appdata_full v, out Input o)
+        {
+            UNITY_INITIALIZE_OUTPUT(Input, o);
+            o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+            o.screenPos = ComputeScreenPos(UnityObjectToClipPos(v.vertex));
+        }
 
 
         void surf(Input IN, inout SurfaceOutputStandard o)
@@ -97,18 +105,14 @@ Shader "Custom/E3"
 
             float4 surfaceCol = lerp(surfaceCol1, surfaceCol2, t);
 
-            float2 screenUV = IN.screenPos.xy / IN.screenPos.w;
+            float2 uvDepth = IN.screenPos.xy /  IN.screenPos.w;
+            float sceneDepth = LinearEyeDepth(SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, uvDepth));
+            float surfaceDepth = UNITY_Z_0_FAR_FROM_CLIPSPACE( IN.screenPos.z);
+            float depthColor =  saturate((sceneDepth - surfaceDepth) / _DepthRange);
 
-            float rawSceneDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, screenUV);
-            float sceneDepth = LinearEyeDepth(rawSceneDepth);         
-            float surfaceDepth = LinearEyeDepth(IN.screenPos.z);      
-
-            float depthDiff = saturate((sceneDepth - surfaceDepth) / _DepthRange);
-            float3 finalColor = lerp(surfaceCol.rgb, _DepthColor.rgb, depthDiff);
-
-           o.Albedo = finalColor;
+            o.Albedo = _DepthColor.rgb;
             o.Normal = blendedNormal;
-            o.Alpha = 1;
+            o.Alpha = depthColor;
         }
         ENDCG
     }

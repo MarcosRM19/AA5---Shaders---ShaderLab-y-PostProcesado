@@ -29,7 +29,7 @@ MonoBehaviour:
   active: 1
   enabled:
     overrideState: 1
-    value: 1
+    value: 0
   color:
     overrideState: 1
     value: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
