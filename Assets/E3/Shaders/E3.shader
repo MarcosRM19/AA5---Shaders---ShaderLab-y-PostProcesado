@@ -55,12 +55,11 @@ Shader "Custom/E3"
 
         void surf(Input IN, inout SurfaceOutputStandard o)
         {
-            float2 flowUV = IN.uv_Flowmap;
-            float4 flowSample = tex2D(_Flowmap, flowUV);
+            float4 flowSample = tex2D(_Flowmap, IN.uv_Flowmap);
 
             float2 baseFlow = (flowSample.rg - 0.5) * 2.0;
             float strength = saturate(length(baseFlow));
-            float2 flowDir = baseFlow * lerp(0.1, _FlowmapStrength, strength);
+            float2 flowDir = baseFlow * lerp(0, _FlowmapStrength, strength);
 
             flowDir *= float2(0.5, -1.0);
 
@@ -74,9 +73,12 @@ Shader "Custom/E3"
             float firstRemapMultiplication = firstRemap * flowDir;
             float secondRemapMultiplication = secondRemap * flowDir;
 
-            float2 offset = float2(0.0, 0.1) * _Time.y * _Speed;
-            float2 uv = IN.uv_Texture * float2(1.0, 1.0) + offset;
-            float2 uvNormals = IN.uv_Normals * float2(1.0, 1.0) + offset;
+            float2 staticUV = IN.uv_Texture;
+            float2 animatedUV = staticUV + float2(0.0, 0.1) * _Time.y * _Speed;
+            float2 uvBase = lerp(staticUV, animatedUV, saturate(strength * 100));
+                
+            float2 uv = IN.uv_Texture * float2(1.0, 1.0) + uvBase;
+            float2 uvNormals = IN.uv_Normals * float2(1.0, 1.0) + uvBase;
 
             float2 firstRemapMultiplicationUV = firstRemapMultiplication + uv;
             float2 secondRemapMultiplicationUV = secondRemapMultiplication + uv;
@@ -104,7 +106,7 @@ Shader "Custom/E3"
             float depthDiff = saturate((sceneDepth - surfaceDepth) / _DepthRange);
             float3 finalColor = lerp(surfaceCol.rgb, _DepthColor.rgb, depthDiff);
 
-            o.Albedo = finalColor;
+           o.Albedo = finalColor;
             o.Normal = blendedNormal;
             o.Alpha = 1;
         }

@@ -271,7 +271,7 @@ Transform:
   m_GameObject: {fileID: 578442750}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -113.7, y: -15.69, z: 75.3}
+  m_LocalPosition: {x: -113.7, y: -5.81, z: 75.3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -663,13 +663,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1294978783}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
-  m_LocalPosition: {x: -113.7, y: -6.6, z: 75.3}
+  m_LocalRotation: {x: 0, y: 0.9201294, z: -0.39161462, w: 0}
+  m_LocalPosition: {x: -113, y: 3.5, z: 77.3}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1525823090}
-  m_LocalEulerAnglesHint: {x: 0, y: 180, z: 0}
+  m_LocalEulerAnglesHint: {x: 46.11, y: 180, z: 0}
 --- !u!114 &1294978787
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -755,7 +755,7 @@ GameObject:
   - component: {fileID: 1468328874}
   - component: {fileID: 1468328876}
   - component: {fileID: 1468328875}
-  m_Layer: 0
+  m_Layer: 6
   m_Name: Terrain (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -886,6 +886,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: E1_Sample
       objectReference: {fileID: 0}
+    - target: {fileID: 471215362682578210, guid: 39195cabdfc68844185d6ef89041d74f, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7067029940877005391, guid: 39195cabdfc68844185d6ef89041d74f, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -943,6 +947,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: E2_Sample
       objectReference: {fileID: 0}
+    - target: {fileID: 4917880123673190499, guid: afb28650fc7761b47bbce050f8d6bec0, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 7021648083221531329, guid: afb28650fc7761b47bbce050f8d6bec0, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -999,6 +1007,10 @@ PrefabInstance:
     - target: {fileID: 4307500982376295452, guid: 52e1829a5d959394ba6d0822d2cfbb29, type: 3}
       propertyPath: m_Name
       value: E3_sample
+      objectReference: {fileID: 0}
+    - target: {fileID: 4307500982376295452, guid: 52e1829a5d959394ba6d0822d2cfbb29, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6636362249307832593, guid: 52e1829a5d959394ba6d0822d2cfbb29, type: 3}
       propertyPath: m_LocalPosition.x
