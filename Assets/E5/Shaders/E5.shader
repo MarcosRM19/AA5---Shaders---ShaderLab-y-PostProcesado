@@ -1,8 +1,8 @@
 Shader "Custom/E5" {
-   Properties
+    Properties
     {
         _SnowHeight("Snow Height", Range(0, 2)) = 0.3
-        _SnowDepth("Snow Path Depth", Range(-2, 2)) = 0.3
+        _SnowDepth("Snow Depth", Range(-2, 2)) = 0.3
 
         _Top_Albedo("Top_Albedo", 2D) = "white" {}
         _Top_Normal("Top_Normal", 2D) = "bump" {}
@@ -95,6 +95,34 @@ Shader "Custom/E5" {
             v.vertex.xyz -= normalWorld * erosionAmount;
         }
 
+        float GetSnowFactor(float height)
+        {
+             return saturate((height - _SnowDepth) / _SnowHeight);
+        }
+
+        float GetMaskFactor(float snowFactor, float topMask)
+        {
+            return saturate(topMask * snowFactor);
+        }
+
+        fixed3 GetAlbedo(float maskFactor, fixed4 bottomAlbedo, fixed4 middleAlbedo, fixed4 topAlbedo, Input IN)
+        {
+            fixed4 albedoBlend1 = lerp(bottomAlbedo, middleAlbedo, GetSnowFactor(IN.worldPos.y));
+            fixed4 albedoFinal = lerp(albedoBlend1, topAlbedo, maskFactor);
+
+            albedoFinal.rgb = lerp(albedoFinal.rgb, _SnowColor.rgb, maskFactor);
+
+            return albedoFinal.rgb;
+        }
+
+        fixed3 GetNormal(float maskFactor, fixed3 bottomNormal, fixed3 middleNormal, fixed3 topNormal, Input IN)
+        {
+            fixed3 normalBlend1 = lerp(bottomNormal, middleNormal, GetSnowFactor(IN.worldPos.y));
+            fixed3 normalFinal = lerp(normalBlend1, topNormal, maskFactor);
+
+            return normalFinal;
+        }
+
         void surf(Input IN, inout SurfaceOutputStandard o)
         {
             float topMask = tex2D(_Top_Mask, IN.uv_Top_Albedo).r;
@@ -109,22 +137,11 @@ Shader "Custom/E5" {
             fixed3 middleNormal = UnpackNormal(tex2D(_Middle_Normal, IN.uv_Middle_Albedo));
             fixed3 bottomNormal = UnpackNormal(tex2D(_Bottom_Normal, IN.uv_Bottom_Albedo));
 
-            float height = IN.worldPos.y;
+            float combinedMask = saturate(topMask + middleMask + bottomMask);
+            float maskFactor = GetMaskFactor(GetSnowFactor(IN.worldPos.y), combinedMask);
 
-            float snowFactor = saturate((height - _SnowDepth) / _SnowHeight);
-
-            float maskFactor = saturate(topMask * snowFactor);
-
-            fixed4 albedoBlend1 = lerp(bottomAlbedo, middleAlbedo, snowFactor);
-            fixed4 albedoFinal = lerp(albedoBlend1, topAlbedo, maskFactor);
-
-            fixed3 normalBlend1 = lerp(bottomNormal, middleNormal, snowFactor);
-            fixed3 normalFinal = lerp(normalBlend1, topNormal, maskFactor);
-
-            albedoFinal.rgb = lerp(albedoFinal.rgb, _SnowColor.rgb, maskFactor);
-
-            o.Albedo = albedoFinal.rgb;
-            o.Normal = normalize(normalFinal) * _SnowNormalStrength;
+            o.Albedo = GetAlbedo(maskFactor, bottomAlbedo, middleAlbedo, topAlbedo, IN);
+            o.Normal = normalize(GetNormal(maskFactor, bottomNormal, middleNormal,topNormal, IN)) * _SnowNormalStrength;
             o.Alpha = 1;
             o.Metallic = 0;
             o.Smoothness = 0.5;
