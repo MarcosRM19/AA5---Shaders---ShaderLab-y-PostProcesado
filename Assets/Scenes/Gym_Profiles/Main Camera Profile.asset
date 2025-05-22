@@ -29,7 +29,7 @@ MonoBehaviour:
   active: 1
   enabled:
     overrideState: 1
-    value: 0
+    value: 1
   color:
     overrideState: 1
     value: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
@@ -41,10 +41,10 @@ MonoBehaviour:
     value: 0.1
   speed:
     overrideState: 1
-    value: 0.5
+    value: 0.1
   maxDistance:
     overrideState: 1
     value: 30
   frequency:
     overrideState: 1
-    value: 0.25
+    value: 0.5

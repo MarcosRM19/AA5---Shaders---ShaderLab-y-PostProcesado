@@ -1,8 +1,8 @@
 Shader "Custom/E5" {
-   Properties
+    Properties
     {
         _SnowHeight("Snow Height", Range(0, 2)) = 0.3
-        _SnowDepth("Snow Path Depth", Range(-2, 2)) = 0.3
+        _SnowDepth("Snow Depth", Range(-2, 2)) = 0.3
 
         _Top_Albedo("Top_Albedo", 2D) = "white" {}
         _Top_Normal("Top_Normal", 2D) = "bump" {}
@@ -46,13 +46,13 @@ Shader "Custom/E5" {
 
         sampler2D _Mask;
         sampler2D _Noise;
-        sampler2D _GlobalEffectRT;
+        sampler2D _RenderTexture;
 
         float _NoiseScale;
         float _NoiseWeight;
 
         float4 _Position;
-        float _OrthographicCamSize;
+        float _OrthographicCamera;
 
         float _SnowHeight;
         float _SnowDepth;
@@ -79,10 +79,10 @@ Shader "Custom/E5" {
             o.uv_Middle_Albedo = v.texcoord.xy;
             o.uv_Bottom_Albedo = v.texcoord.xy;
 
-            float2 uvGlobal = (worldPosition.xz - _Position.xz) / (_OrthographicCamSize * 2.0) + 0.5;
+            float2 uvGlobal = (worldPosition.xz - _Position.xz) / (_OrthographicCamera * 2.0) + 0.5;
 
             float mask = tex2Dlod(_Mask, float4(uvGlobal, 0, 0)).a;
-            float4 RTEffect = tex2Dlod(_GlobalEffectRT, float4(uvGlobal, 0, 0)) * mask;
+            float4 RTEffect = tex2Dlod(_RenderTexture, float4(uvGlobal, 0, 0)) * mask;
 
             float SnowNoise = tex2Dlod(_Noise, float4(worldPosition.xz * _NoiseScale * 5.0, 0, 0)).r;
 
@@ -93,6 +93,34 @@ Shader "Custom/E5" {
 
             float erosionAmount = saturate(RTEffect.g * saturate(v.color.r)) * _SnowDepth;
             v.vertex.xyz -= normalWorld * erosionAmount;
+        }
+
+        float GetSnowFactor(float height)
+        {
+             return saturate((height - _SnowDepth) / _SnowHeight);
+        }
+
+        float GetMaskFactor(float snowFactor, float topMask)
+        {
+            return saturate(topMask * snowFactor);
+        }
+
+        fixed3 GetAlbedo(float maskFactor, fixed4 bottomAlbedo, fixed4 middleAlbedo, fixed4 topAlbedo, Input IN)
+        {
+            fixed4 albedoBlend1 = lerp(bottomAlbedo, middleAlbedo, GetSnowFactor(IN.worldPos.y));
+            fixed4 albedoFinal = lerp(albedoBlend1, topAlbedo, maskFactor);
+
+            albedoFinal.rgb = lerp(albedoFinal.rgb, _SnowColor.rgb, maskFactor);
+
+            return albedoFinal.rgb;
+        }
+
+        fixed3 GetNormal(float maskFactor, fixed3 bottomNormal, fixed3 middleNormal, fixed3 topNormal, Input IN)
+        {
+            fixed3 normalBlend1 = lerp(bottomNormal, middleNormal, GetSnowFactor(IN.worldPos.y));
+            fixed3 normalFinal = lerp(normalBlend1, topNormal, maskFactor);
+
+            return normalFinal;
         }
 
         void surf(Input IN, inout SurfaceOutputStandard o)
@@ -109,22 +137,11 @@ Shader "Custom/E5" {
             fixed3 middleNormal = UnpackNormal(tex2D(_Middle_Normal, IN.uv_Middle_Albedo));
             fixed3 bottomNormal = UnpackNormal(tex2D(_Bottom_Normal, IN.uv_Bottom_Albedo));
 
-            float height = IN.worldPos.y;
+            float combinedMask = saturate(topMask + middleMask + bottomMask);
+            float maskFactor = GetMaskFactor(GetSnowFactor(IN.worldPos.y), combinedMask);
 
-            float snowFactor = saturate((height - _SnowDepth) / _SnowHeight);
-
-            float maskFactor = saturate(topMask * snowFactor);
-
-            fixed4 albedoBlend1 = lerp(bottomAlbedo, middleAlbedo, snowFactor);
-            fixed4 albedoFinal = lerp(albedoBlend1, topAlbedo, maskFactor);
-
-            fixed3 normalBlend1 = lerp(bottomNormal, middleNormal, snowFactor);
-            fixed3 normalFinal = lerp(normalBlend1, topNormal, maskFactor);
-
-            albedoFinal.rgb = lerp(albedoFinal.rgb, _SnowColor.rgb, maskFactor);
-
-            o.Albedo = albedoFinal.rgb;
-            o.Normal = normalize(normalFinal) * _SnowNormalStrength;
+            o.Albedo = GetAlbedo(maskFactor, bottomAlbedo, middleAlbedo, topAlbedo, IN);
+            o.Normal = normalize(GetNormal(maskFactor, bottomNormal, middleNormal,topNormal, IN)) * _SnowNormalStrength;
             o.Alpha = 1;
             o.Metallic = 0;
             o.Smoothness = 0.5;
