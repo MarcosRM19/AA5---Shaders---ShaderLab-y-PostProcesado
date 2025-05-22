@@ -46,13 +46,13 @@ Shader "Custom/E5" {
 
         sampler2D _Mask;
         sampler2D _Noise;
-        sampler2D _GlobalEffectRT;
+        sampler2D _RenderTexture;
 
         float _NoiseScale;
         float _NoiseWeight;
 
         float4 _Position;
-        float _OrthographicCamSize;
+        float _OrthographicCamera;
 
         float _SnowHeight;
         float _SnowDepth;
@@ -79,10 +79,10 @@ Shader "Custom/E5" {
             o.uv_Middle_Albedo = v.texcoord.xy;
             o.uv_Bottom_Albedo = v.texcoord.xy;
 
-            float2 uvGlobal = (worldPosition.xz - _Position.xz) / (_OrthographicCamSize * 2.0) + 0.5;
+            float2 uvGlobal = (worldPosition.xz - _Position.xz) / (_OrthographicCamera * 2.0) + 0.5;
 
             float mask = tex2Dlod(_Mask, float4(uvGlobal, 0, 0)).a;
-            float4 RTEffect = tex2Dlod(_GlobalEffectRT, float4(uvGlobal, 0, 0)) * mask;
+            float4 RTEffect = tex2Dlod(_RenderTexture, float4(uvGlobal, 0, 0)) * mask;
 
             float SnowNoise = tex2Dlod(_Noise, float4(worldPosition.xz * _NoiseScale * 5.0, 0, 0)).r;
 

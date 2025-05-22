@@ -19,9 +19,12 @@ Shader "Hidden/Custom/E4"
             float _Speed;
             float _Width;
             float _Strength;
+            float _Frequency;
             float4 _Color;
             float3 _CameraWorldPos;
             float _MaxDistance;
+            float4x4 _CameraToWorld;
+            float4x4 _CameraInverseProjection;
 
             struct v2f {
                 float4 pos : SV_POSITION;
@@ -32,11 +35,11 @@ Shader "Hidden/Custom/E4"
             {
                 float2 positions[3] = {
                     float2(-1, -1),
-                    float2(3, -1),
-                    float2(-1, 3)
+                    float2( 3, -1),
+                    float2(-1,  3)
                 };
 
-                float2 uvs[3] = {
+                float2 uv[3] = {
                     float2(0, 0),
                     float2(2, 0),
                     float2(0, 2)
@@ -44,41 +47,54 @@ Shader "Hidden/Custom/E4"
 
                 v2f o;
                 o.pos = float4(positions[id], 0, 1);
-                o.uv  = uvs[id];
+                o.uv = uv[id];
+
+            #if UNITY_UV_STARTS_AT_TOP
+                o.uv.y = 1.0 - o.uv.y;
+            #endif
+
                 return o;
             }
 
-            float3 ReconstructWorldPos(float2 uv)
+            float3 ComputeViewPos(float2 uv, float depth)
             {
-                float depth = tex2D(_CameraDepthTexture, uv).r;
-
-                float4 clip = float4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+                float4 clip = float4(uv * 2 - 1, depth, 1.0);
                 float4 view = mul(unity_CameraInvProjection, clip);
-                view /= view.w;
-
-                float4 world = mul(unity_CameraToWorld, view);
-                return world.xyz;
+                view.xyz /= view.w;
+                return mul(_CameraToWorld, view).xyz;
             }
 
             fixed4 frag(v2f i) : SV_Target
             {
-                float rawDepth = tex2D(_CameraDepthTexture, i.uv).r;
-                if (rawDepth >= 1.0) return tex2D(_MainTex, i.uv);
+                float depth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
+                float3 worldPos = ComputeViewPos(i.uv, depth);
+                float4 sceneColor = tex2D(_MainTex, i.uv);
 
-                float3 worldPos = ReconstructWorldPos(i.uv);
-                float dist = distance(worldPos, _CameraWorldPos);
+                float ringSum = 0.0;
 
-                float radius = fmod(_TimeSinceStart * _Speed, _MaxDistance);
+                float duration = 1.0 / _Frequency;
+                int maxPings = 32; 
 
-                float ring = 1.0 - abs(dist - radius) / _Width;
-                ring = saturate(ring);
-                ring *= (1.0 - dist / _MaxDistance);
-                ring *= ring;
+                for (int k = 0; k < maxPings; ++k)
+                {
+                    float pingTime = k * duration;
+                    float age = _TimeSinceStart - pingTime;
 
-                float3 sceneColor = tex2D(_MainTex, i.uv).rgb;
-                float3 pingColor = sceneColor + _Color.rgb * ring * _Strength;
+                    if (age < 0) break;
 
-                return float4(pingColor, 1.0);
+                    float visualAge = age + 30.0;
+
+                    float dist = distance(worldPos, _CameraWorldPos);
+                    float radius = visualAge * _MaxDistance * _Speed;
+                    float ringDist = dist - radius;
+
+                    float ring = 1.0 - saturate(abs(ringDist / _Width));
+                    ring = pow(ring, 3); 
+                    ringSum += ring;
+                }
+
+                ringSum = saturate(ringSum * _Strength);
+                return lerp(sceneColor, _Color, ringSum);
             }
             ENDHLSL
         }

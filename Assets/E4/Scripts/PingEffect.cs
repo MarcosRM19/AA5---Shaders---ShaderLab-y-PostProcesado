@@ -15,6 +15,8 @@ public sealed class PingEffect : PostProcessEffectSettings
 
 public sealed class PingEffectRenderer : PostProcessEffectRenderer<PingEffect>
 {
+    private float _internalTime = 0f;
+
     static readonly int ColorID = Shader.PropertyToID("_Color");
     static readonly int StrengthID = Shader.PropertyToID("_Strength");
     static readonly int WidthID = Shader.PropertyToID("_Width");
@@ -26,6 +28,14 @@ public sealed class PingEffectRenderer : PostProcessEffectRenderer<PingEffect>
 
     public override void Render(PostProcessRenderContext context)
     {
+        float duration = 1f / settings.frequency;
+        float totalPings = _internalTime / duration;
+
+        if (totalPings >= 32f)
+            _internalTime = 0f; 
+
+        _internalTime += Time.deltaTime;
+
         var sheet = context.propertySheets.Get(Shader.Find("Hidden/Custom/E4"));
 
         sheet.properties.SetColor(ColorID, settings.color);
@@ -34,7 +44,7 @@ public sealed class PingEffectRenderer : PostProcessEffectRenderer<PingEffect>
         sheet.properties.SetFloat(SpeedID, settings.speed);
         sheet.properties.SetFloat(MaxDistID, settings.maxDistance);
         sheet.properties.SetFloat(FreqID, settings.frequency);
-        sheet.properties.SetFloat(TimeID, Time.time);
+        sheet.properties.SetFloat(TimeID, _internalTime);
         sheet.properties.SetVector(CamPosID, context.camera.transform.position);
         sheet.properties.SetFloat(MaxDistID, settings.maxDistance);
 
